@@ -547,7 +547,14 @@ public partial class SyncProvider
 
                     fileRangeManager.Cancel(data.NormalizedPath);
 
-                    localPlaceholder.SetInSyncState(CF_IN_SYNC_STATE.CF_IN_SYNC_STATE_NOT_IN_SYNC);
+                    if (openAsyncResult.Status == NtStatus.STATUS_NOT_A_CLOUD_FILE)
+                    {
+                        System.IO.File.Delete(localPlaceholder.FullPath);
+                    }
+                    else
+                    {
+                        localPlaceholder.SetInSyncState(CF_IN_SYNC_STATE.CF_IN_SYNC_STATE_NOT_IN_SYNC);
+                    }
                     return;
                 }
 

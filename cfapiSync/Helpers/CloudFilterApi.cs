@@ -44,7 +44,7 @@ namespace Styletronix
             if (h.IsInvalid)
             {
                 int err = Marshal.GetLastWin32Error();
-                Debug.WriteLine("GetPlaceholderInfoBasic INVALID Handle! Error " + err + " - " + fullPath, System.Diagnostics.TraceLevel.Warning);
+                Styletronix.Debug.WriteLine("GetPlaceholderInfoBasic INVALID Handle! Error " + err + " - " + fullPath, System.Diagnostics.TraceLevel.Warning);
                 return default;
             }
 
@@ -54,17 +54,17 @@ namespace Styletronix
             }
             catch (Exception e)
             {
-                Debug.WriteLine("GetPlaceholderInfoBasic FAILED: " + e.Message, System.Diagnostics.TraceLevel.Error);
+                Styletronix.Debug.WriteLine("GetPlaceholderInfoBasic FAILED: " + e.Message, System.Diagnostics.TraceLevel.Error);
                 return default;
             }
         }
         public static CF_PLACEHOLDER_STANDARD_INFO GetPlaceholderInfoStandard(HFILE FileHandle)
         {
-            Styletronix.Debug.WriteLine("GetPlaceholderInfoStandard by FileHandle", System.Diagnostics.TraceLevel.Verbose);
+            Styletronix.Debug.WriteLine("GetPlaceholderInfoStandard by FileHandle " + ((IntPtr)FileHandle).ToString(), System.Diagnostics.TraceLevel.Verbose);
 
             if (FileHandle.IsInvalid)
             {
-                Debug.WriteLine("GetPlaceholderInfoStandard INVALID Handle!", System.Diagnostics.TraceLevel.Warning);
+                Debug.WriteLine("GetPlaceholderInfoStandard INVALID Handle! " + ((IntPtr)FileHandle).ToString(), System.Diagnostics.TraceLevel.Warning);
                 return default;
             }
 
@@ -159,26 +159,26 @@ namespace Styletronix
         public static bool SetInSyncState(string fullPath, CF_IN_SYNC_STATE inSyncState, bool isDirectory)
         {
             string d = fullPath.TrimEnd('\\');
-            Debug.WriteLine("SetInSyncState " + inSyncState.ToString() + " - " + d, System.Diagnostics.TraceLevel.Info);
+           Styletronix.Debug.WriteLine("SetInSyncState " + inSyncState.ToString() + " - " + d, System.Diagnostics.TraceLevel.Info);
 
             using SafeCreateFileForCldApi h = new(fullPath, isDirectory);
 
             if (h.IsInvalid)
             {
-                Debug.WriteLine("SetInSyncState INVALID Handle! " + fullPath.TrimEnd('\\'), System.Diagnostics.TraceLevel.Warning);
+                Styletronix.Debug.WriteLine("SetInSyncState INVALID Handle! " + fullPath.TrimEnd('\\'), System.Diagnostics.TraceLevel.Warning);
                 return false;
             }
 
             HRESULT result = CfSetInSyncState((SafeFileHandle)h, inSyncState, CF_SET_IN_SYNC_FLAGS.CF_SET_IN_SYNC_FLAG_NONE);
-            Debug.LogResponse(result);
+            Styletronix.Debug.LogResponse(result);
             return result.Succeeded;
         }
         public static bool SetInSyncState(SafeFileHandle fileHandle, CF_IN_SYNC_STATE inSyncState)
         {
-            Debug.WriteLine("SetInSyncState " + inSyncState.ToString() + " - FileHandle " + fileHandle.DangerousGetHandle().ToString(), System.Diagnostics.TraceLevel.Info);
+            Styletronix.Debug.WriteLine("SetInSyncState " + inSyncState.ToString() + " - FileHandle " + fileHandle.DangerousGetHandle().ToString(), System.Diagnostics.TraceLevel.Info);
 
             HRESULT res = CfSetInSyncState(fileHandle, inSyncState, CF_SET_IN_SYNC_FLAGS.CF_SET_IN_SYNC_FLAG_NONE);
-            Debug.LogResponse(res);
+            Styletronix.Debug.LogResponse(res);
 
             return res.Succeeded;
         }

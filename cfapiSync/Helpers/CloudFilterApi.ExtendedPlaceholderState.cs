@@ -120,7 +120,12 @@ namespace Styletronix
 
                 Debug.WriteLine("ConvertToPlaceholder " + _FullPath, System.Diagnostics.TraceLevel.Verbose);
 
-                using SafeOpenFileWithOplock fHandle = new(_FullPath, CF_OPEN_FILE_FLAGS.CF_OPEN_FILE_FLAG_EXCLUSIVE);
+                CF_OPEN_FILE_FLAGS lockLevel = CF_OPEN_FILE_FLAGS.CF_OPEN_FILE_FLAG_EXCLUSIVE;
+                if (System.IO.Directory.Exists(_FullPath)){
+                    lockLevel = CF_OPEN_FILE_FLAGS.CF_OPEN_FILE_FLAG_NONE;
+                }
+
+                using SafeOpenFileWithOplock fHandle = new(_FullPath, lockLevel);
 
                 if (fHandle.IsInvalid)
                 {
@@ -405,11 +410,20 @@ namespace Styletronix
                 Debug.WriteLine("UpdatePlaceholder " + _FullPath + " Flags: " + cF_UPDATE_FLAGS.ToString(), System.Diagnostics.TraceLevel.Verbose);
                 GenericResult res = new();
 
-                using SafeOpenFileWithOplock fHandle = new(_FullPath, CF_OPEN_FILE_FLAGS.CF_OPEN_FILE_FLAG_EXCLUSIVE);
+                Vanara.PInvoke.CldApi.CF_OPEN_FILE_FLAGS lockFlag = CF_OPEN_FILE_FLAGS.CF_OPEN_FILE_FLAG_NONE;
+
+                // CF_OPEN_FILE_FLAG_EXCLUSIVE only for Files, not Directory
+                if (!placeholder.FileAttributes.HasFlag(System.IO.FileAttributes.Directory))
+                {
+                    lockFlag = CF_OPEN_FILE_FLAGS.CF_OPEN_FILE_FLAG_EXCLUSIVE;
+                }
+                
+                using SafeOpenFileWithOplock fHandle = new(_FullPath, lockFlag);
 
                 if (fHandle.IsInvalid)
                 {
                     Debug.WriteLine("UpdatePlaceholder FAILED: Invalid Handle!", System.Diagnostics.TraceLevel.Warning);
+                    // Assuming File is in use, try again later
                     return new GenericResult(NtStatus.STATUS_CLOUD_FILE_IN_USE);
                 }
 
@@ -422,12 +436,14 @@ namespace Styletronix
                     {
                         CF_FILE_RANGE[] dehydrateRanges = null;
                         uint dehydrateRangesCount = 0;
+
                         if (markDataInvalid)
                         {
                             dehydrateRanges = new CF_FILE_RANGE[1];
                             dehydrateRanges[0] = new CF_FILE_RANGE() { StartingOffset = 0, Length = (long)FileSize };
                             dehydrateRangesCount = 1;
                         }
+
                         HRESULT res1 = CfUpdatePlaceholder(fHandle, CreateFSMetaData(placeholder), (IntPtr)fileID, (uint)fileIDSize, dehydrateRanges, dehydrateRangesCount, cF_UPDATE_FLAGS, ref usn);
                         if (!res1.Succeeded)
                         {

@@ -14,6 +14,7 @@ using Windows.Storage.Provider;
 using static Styletronix.CloudFilterApi;
 using static Styletronix.CloudFilterApi.SafeHandlers;
 using static Vanara.PInvoke.CldApi;
+using static Vanara.PInvoke.Shell32;
 
 public partial class SyncProvider : IDisposable
 {
@@ -355,6 +356,8 @@ public partial class SyncProvider : IDisposable
 
         if (MaintenanceInProgress) return;
 
+        Styletronix.Debug.WriteLine("SyncDataAsync SyncMode " + syncMode.ToString() + " : " + relativePath, System.Diagnostics.TraceLevel.Info);
+
         switch (syncMode)
         {
             case SyncMode.Local:
@@ -362,7 +365,8 @@ public partial class SyncProvider : IDisposable
                 break;
 
             case SyncMode.Full:
-                CfUpdateSyncProviderStatus(SyncContext.ConnectionKey, CF_SYNC_PROVIDER_STATUS.CF_PROVIDER_STATUS_SYNC_FULL);
+                //CfUpdateSyncProviderStatus(SyncContext.ConnectionKey, CF_SYNC_PROVIDER_STATUS.CF_PROVIDER_STATUS_SYNC_FULL);
+                CfUpdateSyncProviderStatus(SyncContext.ConnectionKey, CF_SYNC_PROVIDER_STATUS.CF_PROVIDER_STATUS_SYNC_INCREMENTAL);
                 break;
         }
 
@@ -388,7 +392,7 @@ public partial class SyncProvider : IDisposable
                 }
                 catch (Exception ex)
                 {
-
+                    Styletronix.Debug.LogException(ex);
                 }
 
 
@@ -444,6 +448,8 @@ public partial class SyncProvider : IDisposable
     }
     internal List<Placeholder> GetLocalFileList(string absolutePath, CancellationToken cancellationToken)
     {
+        Styletronix.Debug.WriteLine("GetLocalFileList: " + absolutePath, System.Diagnostics.TraceLevel.Verbose);
+
         List<Placeholder> localPlaceholders = new();
         DirectoryInfo directory = new(absolutePath);
 
@@ -453,6 +459,7 @@ public partial class SyncProvider : IDisposable
             localPlaceholders.Add(new Placeholder(fileSystemInfo));
         }
 
+        Styletronix.Debug.WriteLine("GetLocalFileList Completed: " + absolutePath, System.Diagnostics.TraceLevel.Verbose);
         return localPlaceholders;
     }
 
@@ -1045,6 +1052,7 @@ public partial class SyncProvider : IDisposable
             // Ignore special files.
             if (IsExcludedFile(fullPath, localPlaceHolder.Attributes))
             {
+                Styletronix.Debug.WriteLine("File excluded: " + fullPath, System.Diagnostics.TraceLevel.Verbose);
                 localPlaceHolder.SetPinState(CF_PIN_STATE.CF_PIN_STATE_EXCLUDED);
                 localPlaceHolder.SetInSyncState(CF_IN_SYNC_STATE.CF_IN_SYNC_STATE_IN_SYNC);
             }
@@ -1055,12 +1063,15 @@ public partial class SyncProvider : IDisposable
 
 
             if (localPlaceHolder.PlaceholderInfoStandard.PinState == CF_PIN_STATE.CF_PIN_STATE_EXCLUDED)
+            {
+                Styletronix.Debug.WriteLine("Skip File excluded: " + fullPath, System.Diagnostics.TraceLevel.Verbose);
                 return;
+            }
 
             if (localPlaceHolder.IsDirectory)
             {
-                if (syncMode == SyncMode.Full)
-                {
+                //if (syncMode == SyncMode.Full)
+                //{
                     if ((await remotePlaceholder.GetPlaceholder()) == null)
                     {
                         // Directory does not exist on Server
@@ -1068,7 +1079,10 @@ public partial class SyncProvider : IDisposable
                         {
                             // Directory remotely deleted if it was in sync.
                             Styletronix.Debug.WriteLine("TODO: Remove local Directory if empty...", System.Diagnostics.TraceLevel.Warning);
-                            //Directory.Delete(localPlaceHolder.FullPath, false);
+                            // TODO: Check if local files require sync
+                            // If upload is required, ignore delete request.
+                            // if all files in sync, delete Directory recursive.
+                            Directory.Delete(localPlaceHolder.FullPath, false);
                             return;
                         }
                         else
@@ -1085,7 +1099,7 @@ public partial class SyncProvider : IDisposable
                             return;
                         }
                     }
-                }
+                //}
             }
             else
             {
@@ -1378,7 +1392,7 @@ public partial class SyncProvider : IDisposable
         using FileStream fStream = new(fullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
         // Set to "NOT IN SYNC" to retry uploads if failed
-        //SetInSyncState(fStream.SafeFileHandle, CF_IN_SYNC_STATE.CF_IN_SYNC_STATE_NOT_IN_SYNC);
+        SetInSyncState(fStream.SafeFileHandle, CF_IN_SYNC_STATE.CF_IN_SYNC_STATE_NOT_IN_SYNC);
 
         Placeholder localPlaceHolder = new(fullPath);
 

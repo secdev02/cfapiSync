@@ -44,6 +44,8 @@ namespace CfapiSync_GUI
         private void Form1_Load(object sender, EventArgs e)
         {
             Styletronix.Debug.LogEvent += WriteEventToLog;
+            Styletronix.Debug.generalSwitch.Level = System.Diagnostics.TraceLevel.Verbose;
+
 
             var args = Environment.GetCommandLineArgs();
             int i = 1;
